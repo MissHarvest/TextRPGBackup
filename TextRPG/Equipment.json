@@ -1,0 +1,22 @@
+{
+  "Equip": [
+    {
+      "bEquip": false,
+      "_status": 0,
+      "type": 0,
+      "Name": "",
+      "Value": 0,
+      "Description": null,
+      "Price": 0
+    },
+    {
+      "bEquip": true,
+      "_status": 2,
+      "type": 1,
+      "Name": "나무 투구",
+      "Value": 1,
+      "Description": "나무로 만들어진 투구이다.",
+      "Price": 5
+    }
+  ]
+}

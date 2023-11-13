@@ -1,0 +1,11 @@
+{
+  "Lv": 2,
+  "Class": "전사",
+  "Atk": 12,
+  "Def": 2,
+  "MaxHP": 100,
+  "Exp": 8,
+  "MaxExp": 20,
+  "Gold": 321,
+  "Inventory": []
+}
