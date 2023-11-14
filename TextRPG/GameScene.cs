@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -12,314 +13,416 @@ using System.Threading.Tasks;
 
 namespace TextRPG
 {
-    class Point
+    class Widget
     {
-        int x = 0;
-        int y = 0;
-        string str = "";
+        protected int _x = 0;
+        protected int _y = 0;
 
-        public Point(int x, int y, string str)
+        protected int _width = 0;
+        public int Width { get { return _width; } }
+
+        protected  int _height = 0;
+        public int Height { get { return _height; } }
+
+
+        protected int _maxChildrenCount = 0;
+        Dictionary<string, Widget> _children;
+        protected int ChildrenCount { get { return _children.Count; } }
+
+        public Widget() 
         {
-            this.x = x;
-            this.y = y;
-            this.str = str;
+            _children = new Dictionary<string, Widget>();
         }
 
-        public void Draw()
+        public Widget(int x, int y)
         {
-            Console.SetCursorPosition(x, y);
-            Console.Write(str);
-            Console.SetCursorPosition(52, 25);
+            SetPosition(x, y);
+            _children = new Dictionary<string, Widget>();
         }
 
-        public void Draw(string msg)
+        public Widget(int x, int y, int width, int height)
         {
-            str = msg;
-            Console.SetCursorPosition(x, y);
-            Console.Write(msg);
-            Console.SetCursorPosition(52, 25);
+            _children = new Dictionary<string, Widget>();
+            SetPosition(x, y);
+            SetSize(width, height);            
         }
 
-        public void Clear()
+        public void Draw() 
         {
-            byte[] buffer = Encoding.Default.GetBytes(str);
-            int length = buffer.Length;
+            Draw(0, 0);
+        }
 
-            for(int i = 0; i < length; ++i)
+        virtual protected void Draw(int x, int y)
+        {
+            foreach(var widget in _children)
             {
-                Console.SetCursorPosition(x + i, y);
-                Console.Write(" ");
+                widget.Value.Draw(x, y);
             }
         }
 
-        public void Delete()
+        virtual protected void AddChild(string name, Widget widget)
         {
-            byte[] buffer = Encoding.Default.GetBytes(str);
-            int length = buffer.Length;
-
-            for (int i = 0; i < length; ++i)
+            if(_children.Count < _maxChildrenCount)
             {
-                Console.SetCursorPosition(x + i, y);
-                Console.Write(" ");
+                _children.Add(name, widget);
             }
-            str = "";
+        }
+
+        virtual public void SetPosition(int x, int y)
+        {
+            _x = x;
+            _y = y;
+        }
+
+        
+        protected T? GetChild<T>(string name) where T : Widget
+        {
+            T? child = _children.ContainsKey(name) && _children[name] is T ? (T)_children[name] : null;
+            return child;
+        }
+
+        virtual public void SetSize(int width, int height)
+        {
+            _width = width;
+            _height = height;
+        }
+
+        virtual public void Clear()
+        {
+            _children.Clear();
         }
     }
 
-    class Widget
+    class Text : Widget
     {
-        // 생성할 때, 가로 및 세로 길이 설정 
-        // 이 때, 세로는 최소 3 이상이어야 한다.
-        // text 변수를 가지게 만들고 싶다.
-        // 그래서 해당 text 를 자신 안에 추가한다.
-        // 그리는 위치가 필요. 좌측 상단을 시작으로.
-        // new TextBlock(10, 3)
-        // text = "아이템";
-        // 좌 , 우 , 가운데 정렬이 되면 좋겠다.
-        // Screen.Draw(TextBlock)
-        protected int _width;
-        protected int _height;
-        public int Height { get { return _height; } }
+        public string text = "";
 
-        public Widget(int width, int heigt)
+        public Text() { }
+
+        public Text(int x, int y) : base(x, y) { }
+
+        protected override void Draw(int x, int y)
         {
-            _width = width;
-            _height = heigt;
+            Screen.SetCursorPosition(_x + x, _y + y);
+            Console.Write(text);
+        }
+    }
+
+    class Border : Widget
+    {
+        public Border() 
+        {
+            _width = 10;
+            _height = 5;
+            _maxChildrenCount = 1;
         }
 
-        virtual public void Draw(int xPos, int yPos)
+        public Border(int x, int y) : base(x, y) 
         {
-            for (int i = xPos + 1; i < xPos + _width - 1; ++i)
+            _width = 10;
+            _height = 5;
+            _maxChildrenCount = 1;
+        }
+
+        public Border(int x, int y, int width, int height) : base(x, y, width, height) 
+        {
+            _maxChildrenCount = 1;
+        }
+
+        protected override void Draw(int x, int y)
+        {
+            DrawBoundary(_x + x, _y + y);
+        }
+
+        void DrawBoundary(int x, int y)
+        {
+            for (int i = x + 1; i < x + _width - 1; ++i)
             {
-                Screen.SetCursorPosition(i, yPos);
+                Screen.SetCursorPosition(i, y);
                 Console.Write("━");
 
-                Screen.SetCursorPosition(i, yPos + _height - 1);
+                Screen.SetCursorPosition(i, y + _height - 1);
                 Console.Write("━");
             }
 
-            for (int i = yPos + 1; i < yPos + _height; ++i)
+            for (int i = y + 1; i < y + _height; ++i)
             {
-                Screen.SetCursorPosition(xPos, i);
+                Screen.SetCursorPosition(x, i);
                 Console.Write("┃");
 
-                Screen.SetCursorPosition(xPos + _width - 1, i);
+                Screen.SetCursorPosition(x + _width - 1, i);
                 Console.Write("┃");
             }
 
-            Screen.SetCursorPosition(xPos, yPos);
+            Screen.SetCursorPosition(x, y);
             Console.Write("┏");
 
-            Screen.SetCursorPosition(xPos + _width - 1, yPos);
+            Screen.SetCursorPosition(x + _width - 1, y);
             Console.Write("┓");
 
-            Screen.SetCursorPosition(xPos, yPos + _height - 1);
+            Screen.SetCursorPosition(x, y + _height - 1);
             Console.Write("┗");
 
-            Screen.SetCursorPosition(xPos + _width - 1, yPos + _height - 1);
+            Screen.SetCursorPosition(x + _width - 1, y + _height - 1);
             Console.Write("┛");
         }
     }
-
+    
     class TextBlock : Widget
     {
-        // text 삽입 위치 
-        int _x = 2;
-        int _y = 1;
-
-        string[] lines;
-        public string[] text { set { lines = value; } }
-
-        public TextBlock(int width, int height) : base (width, height) 
+        public TextBlock()
         {
-            
+            _maxChildrenCount = 3;
+
+            _width = 10;
+            _height = 3;
+
+            AddChild("Boundary", new Border(0, 0, _width,_height));
+            AddChild("Text", new Text(2, 1));
         }
 
-        public override void Draw(int xPos, int yPos)
+        public TextBlock(int x, int y, int width, int height) : base(x, y, width, height)
         {
-            base.Draw(xPos, yPos);
+            _maxChildrenCount = 3;
+            AddChild("Boundary", new Border(0, 0, _width, _height));
+            AddChild("Text", new Text(2, 1));
+        }
 
-            for(int i = 0; i < lines.Length; ++i)
+        public void SetText(string text)
+        {
+            GetChild<Text>("Text").text = text;
+        }
+
+        protected override void Draw(int x, int y)
+        {
+            base.Draw(x + _x, y + _y);
+        }
+
+        public override void SetSize(int width, int height)
+        {
+            base.SetSize(width, height);
+            if(GetChild<Border>("Boundary") != null)
+                GetChild<Border>("Boundary").SetSize(width, height);
+        }
+    }
+
+    class StatusWidget : Widget
+    {
+        public StatusWidget(int x, int y) : base(x, y)
+        {
+            _maxChildrenCount = 10;
+
+            AddChild("Background", new Border(0, 0, 39, 20));
+
+            AddChild("Content", new Border(2, 1, 35, 18));
+
+            AddChild("LvText", new Text(5, 2));
+            AddChild("ExpText", new Text(15, 2));
+            AddChild("ClassText", new Text(5, 4));
+            AddChild("AtkText", new Text(5, 6));
+            AddChild("DefText", new Text(5, 8));
+            AddChild("HPText", new Text(5, 10));
+            AddChild("GoldText", new Text(5, 12));
+        }
+
+        public void SetPlayer(Player player)
+        {
+            GetChild<Text>("LvText").text = $"Lv. {player.Lv}";
+            GetChild<Text>("ExpText").text = $"[ {player.Exp} / {player.MaxExp} ]";
+            GetChild<Text>("ClassText").text = $"Chad ( {player.Class} )";
+            GetChild<Text>("AtkText").text = $"공격력 : {player.Atk}";
+            GetChild<Text>("DefText").text = $"방어력 : {player.Def}";
+            GetChild<Text>("HPText").text = $" 체력 : {player.Hp} / {player.MaxHp}";
+            GetChild<Text>("GoldText").text = $" 골드 : {player.Gold} G";
+        }
+    }
+
+    class ResultWidget : Widget
+    {
+        public ResultWidget(int x, int y, int width, int height) : base(x, y, width, height)
+        {
+            _maxChildrenCount = 20;
+
+            AddChild("Background", new Border(0, 0, width, height));
+            AddChild("Content", new Border(2, 1, width - 4, height - 2));
+            
+            AddChild("LvLabel", new Text(5,2));
+            AddChild("LvText", new Text(25, 3));
+            
+            AddChild("EXPLabel", new Text(5, 4));
+            AddChild("EXPText", new Text(13, 5));
+            
+            AddChild("HPLabel", new Text(5, 6));
+            AddChild("HPText", new Text(25, 7));
+            
+            AddChild("GoldLabel", new Text(5, 8));
+            AddChild("GoldText", new Text(17, 9));
+
+            AddChild("LevelUpText", new Text(5, 11));
+            AddChild("AtkText", new Text(25, 13));
+            AddChild("DefText", new Text(25, 15));
+        }
+
+        protected override void Draw(int x, int y)
+        {
+            base.Draw(_x + x, _y + y);
+        }
+
+        public void SetResult(Record before, Record after)
+        {
+            GetChild<Text>("LvLabel").text = $"레벨 --------------------------";
+            GetChild<Text>("LvText").text = $"{before.lv, 3} --> {after.lv, 3}";
+
+            GetChild<Text>("EXPLabel").text = $"경험치 ------------------------";
+            GetChild<Text>("EXPText").text = $"{before.exp, 3} / {before.maxExp, 3} --> {after.exp, 3} / {after.maxExp,3}";
+
+            GetChild<Text>("HPLabel").text = $"체력 --------------------------";
+            GetChild<Text>("HPText").text = $"{before.hp,3} --> {after.hp,3}";
+
+            GetChild<Text>("GoldLabel").text = $"골드 --------------------------";
+            GetChild<Text>("GoldText").text = $"{before.gold, 5} G --> {after.gold, 5} G";
+
+            if(before.lv != after.lv)
             {
-                Screen.SetCursorPosition(_x + xPos, _y + yPos);
-                Console.Write($"{lines[i]}");
-                ++_y;
-            }
-            _y = 1;
+                GetChild<Text>("LevelUpText").text = "LEVEL UP !!";
+                GetChild<Text>("AtkText").text = $"공격력 + {2}";
+                GetChild<Text>("DefText").text = $"방어력 + {1}";
+            }            
         }
     }
 
     class ItemSlot : Widget
     {
-        // text 삽입 위치 
-        int _x = 2;
-        int _y = 1;
-
-        Item _item;
-
-        public int index = 0;
-
-        public ItemSlot(Item item) : base(50, 5)
+        public ItemSlot()
         {
-            _item = item;
+            _maxChildrenCount = 5;
+
+            _width = 38;
+            _height = 5;
+
+            AddChild("Content", new Border(0, 0, _width, _height));
+
+            AddChild("ItemNameText", new Text(2, 1));
+            AddChild("ItemEffectText", new Text(20, 1));
+            AddChild("ItemDescriptionText", new Text(2, 3));
+            AddChild("ItemPriceText", new Text(30, 3));
         }
 
-        public override void Draw(int xPos, int yPos)
+        public void SetItem(int index, Item item)
         {
-            base.Draw(xPos, yPos);
+            string text = item.Name;
+            if (item.bEquip) text = text.Insert(0, "[E]");
+            GetChild<Text>("ItemNameText").text = $"{index + 1}. {text}";
+            GetChild<Text>("ItemEffectText").text = $"| {item.Status} + {item.Value} |";
+            GetChild<Text>("ItemDescriptionText").text = $"{item.Description}";
+            GetChild<Text>("ItemPriceText").text = $"{item.Price, 5}G";
+        }
 
-            // offset 할 때, 한글이 아닌 다른 문자 확인 과정 필요
-            string itemName = _item.bEquip ? _item.Name.Insert(0, "[E]") : _item.Name;
-            string firstLine = Utility.MatchCharacterLength(itemName, 15);
-
-            firstLine = $"{index + 1}. " + firstLine;
-            firstLine += $"|{_item.Status} + {_item.Value,3} |";
-            Screen.SetCursorPosition(_x + xPos, _y + yPos);
-            Console.Write($"{firstLine}");
-
-            _y += 2;
-            Screen.SetCursorPosition(_x + xPos, _y + yPos);
-            string secondLine = Utility.MatchCharacterLength(_item.Description, 40);
-            secondLine += $"{_item.Price,4} G";
-            Console.Write($"{secondLine}");
-
-            _y = 1;
+        protected override void Draw(int x, int y)
+        {
+            base.Draw(x + _x, y + _y);
         }
     }
 
-    class StatusWidget :Widget
+    class GridBox : Widget
     {
-        // text 삽입 위치 
-        int _x = 2;
-        int _y = 1;
+        int _index = 0;
+        int _xMargin = 1;
+        int _yMargin = 0;
+        int _col = 2;
+        List<Widget> _widgets;
 
-        Player? _player;
-        public Player Player { set { _player = value; } }
-
-        public StatusWidget(int width, int height) : base(width, height)
+        public GridBox()
         {
-            _player = null;
+            _maxChildrenCount = 10;
+            _widgets = new List<Widget>();
         }
 
-        public override void Draw(int xPos, int yPos)
+        public void SetMargine(int xMargine/* =1 */, int yMargine/* =0 */)
         {
-            base.Draw(xPos, yPos);
-            DrawOutLine(xPos, yPos);
-
-            if (_player == null) return;
-
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($" Lv. {_player.Lv,2} ( {_player.Exp} / {_player.MaxExp} )");
-            
-            _y += 2;
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($" Chad ( {_player.Class} )");
-
-            _y += 2;
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($" 공격력 : {_player.Atk}");
-
-            _y += 2;
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($" 방어력 : {_player.Def}");
-
-            _y += 2;
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($"  체력  : {_player.Hp} / {_player.MaxHp}");
-
-            _y += 2;
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($"  Gold  : {_player.Gold,4} G");
-
-            _y = 1;
+            _xMargin = xMargine;
+            _yMargin = yMargine;
         }
 
-        void DrawOutLine(int xPos, int yPos)
+        public void SetColomn(int col)
         {
-            for (int i = xPos - 1; i < xPos + _width + 1; ++i)
+            _col = col;
+        }
+
+        public void AddItem(Widget widget)
+        {
+            AddChild($"Item{_index++}", widget);
+            _widgets.Add(widget);
+        }
+
+        protected override void Draw(int x, int y)
+        {
+            for(int i = 0; i < _widgets.Count; ++i)
             {
-                Screen.SetCursorPosition(i, yPos - 1);
-                Console.Write("━");
-
-                Screen.SetCursorPosition(i, yPos + _height);
-                Console.Write("━");
+                _widgets[i].SetPosition(_xMargin * (i% _col + 1) + _widgets[i].Width * (i% _col), 
+                    _yMargin * (i/_col + 1) + _widgets[i].Height * (i/ _col));
             }
+            base.Draw(x + _x, y + _y);
+        }
 
-            for (int i = yPos; i < yPos + _height; ++i)
-            {
-                Screen.SetCursorPosition(xPos - 2, i);
-                Console.Write("┃");
-
-                Screen.SetCursorPosition(xPos + _width + 1, i);
-                Console.Write("┃");
-            }
-
-            Screen.SetCursorPosition(xPos - 2, yPos - 1);
-            Console.Write("┏");
-
-            Screen.SetCursorPosition(xPos + _width + 1, yPos - 1);
-            Console.Write("┓");
-
-            Screen.SetCursorPosition(xPos - 2, yPos + _height);
-            Console.Write("┗");
-
-            Screen.SetCursorPosition(xPos + _width + 1, yPos + _height);
-            Console.Write("┛");
+        override public void Clear()
+        {
+            base.Clear();
+            _widgets.Clear();
+            _index = 0;
         }
     }
 
-    class MsgWidget : Widget
+    class ShopInformationDeskWidget : Widget
     {
-        // text 삽입 위치 
-        int _x = 2;
-        int _y = 1;
-
-        public string text;
-        public MsgWidget(int width, int height) : base(width, height) 
+        public ShopInformationDeskWidget(int x, int y) : base(x, y)
         {
+            _maxChildrenCount = 6;
 
+            AddChild("Content", new Border(0, 0, 40, 9));
+            AddChild("Text1", new Text(2, 1));
+            AddChild("Text2", new Text(2, 2));
+            AddChild("Text3", new Text(2, 4));
+            AddChild("Text4", new Text(2, 5));
+            AddChild("Text5", new Text(2, 6));
+
+            Init();
         }
 
-        public override void Draw(int xPos, int yPos)
+        void Init()
         {
-            base.Draw(xPos, yPos);
-            DrawOutLine(xPos, yPos);
-
-            Screen.SetCursorPosition(xPos + _x, yPos + _y);
-            Console.Write($"{text}");            
+            GetChild<Text>("Text1").text = "어서오세요.";
+            GetChild<Text>("Text2").text = "[일반 상점] 입니다.";
+            GetChild<Text>("Text3").text = "무엇을 도와드릴까요?";
+            GetChild<Text>("Text4").text = "1. 구입";
+            GetChild<Text>("Text5").text = "2. 판매";
         }
 
-        void DrawOutLine(int xPos, int yPos)
+        protected override void Draw(int x, int y)
         {
-            for (int i = xPos - 1; i < xPos + _width + 1; ++i)
-            {
-                Screen.SetCursorPosition(i, yPos - 1);
-                Console.Write("━");
+            base.Draw(x + _x, y + _y);
+        }
+    }
 
-                Screen.SetCursorPosition(i, yPos + _height);
-                Console.Write("━");
-            }
+    class MessageBox : Widget
+    {
+        public MessageBox(int x, int y, int width, int height = 3) : base(x, y, width, height)
+        {
+            _maxChildrenCount = 3;
 
-            for (int i = yPos; i < yPos + _height; ++i)
-            {
-                Screen.SetCursorPosition(xPos - 2, i);
-                Console.Write("┃");
+            AddChild("Background", new Border(0, 0, width, height));
+            AddChild("Content", new Border(2, 1, width - 4, height - 2));
+            AddChild("MsgText", new Text(5, 2));
+        }
 
-                Screen.SetCursorPosition(xPos + _width + 1, i);
-                Console.Write("┃");
-            }
+        public void SetText(string text)
+        {
+            GetChild<Text>("MsgText").text = text;
+        }
 
-            Screen.SetCursorPosition(xPos - 2, yPos - 1);
-            Console.Write("┏");
-
-            Screen.SetCursorPosition(xPos + _width + 1, yPos - 1);
-            Console.Write("┓");
-
-            Screen.SetCursorPosition(xPos - 2, yPos + _height);
-            Console.Write("┗");
-
-            Screen.SetCursorPosition(xPos + _width + 1, yPos + _height);
-            Console.Write("┛");
+        protected override void Draw(int x, int y)
+        {
+            base.Draw(x + _x, y + _y);
         }
     }
 

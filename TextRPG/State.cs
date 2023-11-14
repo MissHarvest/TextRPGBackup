@@ -30,28 +30,22 @@ namespace TextRPG
         protected string[] _display = { };
         public string[] Display { get { return _display; } }
 
-        static MsgWidget _board = new MsgWidget(40, 3);
-
-        static TextBlock _goldText = new TextBlock(15, 3);
+        static MessageBox _board = new MessageBox(33, 28, 40, 5);
+        static TextBlock _goldText = new TextBlock(63, 20, 15, 3);
 
         protected void ThrowMessage(string msg)
         {
-            int xOffset = 33;
-            int yOfsset = 28;
-            _board.text = msg;
-
-            _board.Draw(xOffset, yOfsset);
+            _board.SetText(msg);
+            _board.Draw();
             Thread.Sleep(1000);
             GameManager.Instance.RefreshScene();
         }
 
         protected void ShowGold()
         {
-            int xOffset = 63;
-            int yOffset = 20;
             string playerGold = GameManager.Instance.Player.Gold.ToString();
-            _goldText.text = new string[] { $"{playerGold, 10} G"};
-            _goldText.Draw(xOffset, yOffset);
+            _goldText.SetText($"{playerGold,10} G");
+            _goldText.Draw();
         }
 
         virtual public void HandleInput(GameManager game, ConsoleKey key) { }
@@ -62,16 +56,16 @@ namespace TextRPG
         {
             Screen.ShowMapName(_name, _comment);
             Screen.DrawBotScreen(Option, 3, true);
-        }// 강제하고 싶은데
+        }
     }
 
     class TitleScene : Scene
     {
-        ItemSlot _itemSlot;
+        TextBlock tb;
         public TitleScene()
         {            
             _name = "타이틀";
-            _display = File.ReadAllLines(@"..\..\..\Title.txt");
+            //_display = File.ReadAllLines(@"..\..\..\Title.txt");
             _next.Add("Town", new TownScene(this));
         }
 
@@ -88,7 +82,7 @@ namespace TextRPG
         public override void DrawScene()
         {
             Screen.SetSize(80, 40);
-            Screen.DrawScreen(Display, 5, 0);  
+            Screen.DrawScreen(Display, 5, 0);
         }
     }
     
@@ -108,7 +102,7 @@ namespace TextRPG
             _next.Add("DungunEntrance", new DungunEntranceScene(this));
             _next.Add("Temple", new TempleScene(this));
 
-            SetDisplay();
+            SetDisplay();            
         }
 
         override public void HandleInput(GameManager game, ConsoleKey key)
@@ -158,13 +152,13 @@ namespace TextRPG
     
     class StatusScene : Scene
     {
-        Widget _statusWidget;
+        StatusWidget _statusWidget;
         public StatusScene(Scene parent)
         {
             _name = "능력치";
             _comment = "플레이어의 능력치를 확인합니다.";
             _prev = parent;
-            _statusWidget = new StatusWidget(35, 18);
+            _statusWidget = new StatusWidget(6, 2);
         }
 
         override public void HandleInput(GameManager game, ConsoleKey key)
@@ -181,28 +175,29 @@ namespace TextRPG
         {
             base.Update(game);
             Player player = game.Player;
-            ((StatusWidget)_statusWidget).Player = player;
+            _statusWidget.SetPlayer(player);
         }
 
         public override void DrawScene()
         {
             base.DrawScene();
             Screen.DrawTopScreen(Display);
-            _statusWidget.Draw(6, 2);
+            _statusWidget.Draw();
         }
     }
 
     class InventoryScene : Scene
     {
-        List<ItemSlot> textBlocks = new List<ItemSlot>();
-
+        GridBox _inventoryWidget;
+        public GridBox InventoryWidget { get { return _inventoryWidget; } }
         public InventoryScene(Scene parent)
         {
             _name = "인벤토리";
             _comment = "플레이어의 인벤토리를 확인합니다.";
             _prev = parent;
             _choices = new string[] { "장착관리", "아이템 정렬" };
-            _next.Add("Equip", new EquipScene(this));
+            _inventoryWidget = new GridBox();
+            _next.Add("Equip", new EquipScene(this));            
         }
 
         public override void HandleInput(GameManager game, ConsoleKey key)
@@ -230,14 +225,12 @@ namespace TextRPG
         {
             base.Update(game);
             Player player = game.Player;
-
-            textBlocks.Clear();
-
+            _inventoryWidget.Clear();
             for (int i = 0; i < player.Inventory.Count; ++i)
             {
-                ItemSlot slot = new ItemSlot(player.Inventory[i]);
-                slot.index = i;
-                textBlocks.Add(slot);
+                ItemSlot slot = new ItemSlot();
+                slot.SetItem(i, player.Inventory[i]);
+                _inventoryWidget.AddItem(slot);
             }
         }
 
@@ -246,27 +239,20 @@ namespace TextRPG
             base.DrawScene();
             Screen.DrawTopScreen(Display);
 
-            int xOffset = 2;
-            int yOffset = 1;
-
-            for(int i = 0; i < textBlocks.Count; ++i)
-            {
-                textBlocks[i].Draw(xOffset, yOffset);
-                yOffset += textBlocks[i].Height;
-            }
+            _inventoryWidget.Draw();
             ShowGold();
         }
     }
 
     class EquipScene : Scene
     {
-        List<ItemSlot> slots = new List<ItemSlot>();
-
+        GridBox _inventoryWidget;
         public EquipScene(Scene parent)
         {
             _name = "장착관리";
             _comment = "플레이어의 착용 장비를 관리합니다.";
             _prev = parent;
+            _inventoryWidget = ((InventoryScene)parent).InventoryWidget;
         }
 
         public override void HandleInput(GameManager game, ConsoleKey key)
@@ -290,23 +276,20 @@ namespace TextRPG
         {
             base.Update(game);
             Player player = game.Player;
-            // Set Choice
+            
             SetOption(player);
 
-            // Set Display
-            // 일단 인벤토리 목록을 보여준다. > 부위 별로 착용한 아이템을 보여준다?
             SetDisplay(player);
         }
 
         void SetDisplay(Player player)
         {
-            slots.Clear();
-
+            _inventoryWidget.Clear();
             for (int i = 0; i < player.Inventory.Count; ++i)
             {
-                ItemSlot slot = new ItemSlot(player.Inventory[i]);
-                slot.index = i;
-                slots.Add(slot);
+                ItemSlot slot = new ItemSlot();
+                slot.SetItem(i, player.Inventory[i]);
+                _inventoryWidget.AddItem(slot);
             }
         }
 
@@ -327,28 +310,23 @@ namespace TextRPG
         public override void DrawScene()
         {
             base.DrawScene();
-            int xOffset = 2;
-            int yOffset = 1; 
-            for(int i = 0; i < slots.Count; ++i)
-            {
-                slots[i].Draw(xOffset, yOffset);
-                yOffset += slots[i].Height;
-            }
+            Screen.DrawTopScreen(Display);
+            _inventoryWidget.Draw();
         }
     }
 
     class ShopScene : Scene
     {
         public Shop shop;
-        Widget _widget;
+        ShopInformationDeskWidget _widget;
 
         public ShopScene(Scene parent)
         {
             _name = "상점";
             _comment = "아이템을 구입 또는 판매합니다.";
             _prev = parent;
-            _widget = new TextBlock(40, 9);
-            ((TextBlock)_widget).text = new string[] { "어서오세요.", "[일반 상점] 입니다.",  "","" ,"무엇을 도와드릴까요?" , "1. 구입", "2. 판매" };
+            _widget = new ShopInformationDeskWidget(35, 3);
+            
             _choices = new string[] { "구입", "판매" };
             shop = new Shop();
             
@@ -383,7 +361,7 @@ namespace TextRPG
         {
             base.DrawScene();
             Screen.DrawTopScreen(Display);
-            _widget.Draw(35, 3);
+            _widget.Draw();
             ShowGold();
         }
     }
@@ -392,7 +370,7 @@ namespace TextRPG
     {
         Shop _shop;
 
-        List<ItemSlot> slots = new List<ItemSlot>();
+        GridBox _ShopItems;
 
         public BuyScene(Scene parent)
         {
@@ -400,7 +378,7 @@ namespace TextRPG
             _comment = "아이템을 구입합니다.";
             _prev = parent;
             _shop = ((ShopScene)Prev).shop;
-
+            _ShopItems = new GridBox();
             SetDisplay();
             SetOption();
         }
@@ -418,26 +396,34 @@ namespace TextRPG
 
                 default:
                     Item item = _shop.Goods[(int)key - 49];
-                    if(game.Player.Buy(item) == false) // 인벤토리가 가득차는 경우도 고려해봐야함.
+                    try
                     {
-                        ThrowMessage("골드가 부족합니다.");                        
+                        game.Player.Buy(item);
                     }
-                    else
+                    catch(GoldShortageException e)
                     {
-                        ThrowMessage($"{item.Name} 을 구입했습니다.");
+                        ThrowMessage("골드가 부족합니다.");
+                        return;
                     }
+                    catch(IndexOutOfRangeException e)
+                    {
+                        ThrowMessage("인벤토리가 가득찼습니다.");
+                        return;
+                    }
+                    ThrowMessage($"{item.Name} 을 구입했습니다.");
                     break;
             }
         }
 
         void SetDisplay()
         {
-            for(int i = 0; i <_shop.Goods.Count; ++i)
+            _ShopItems.Clear();
+            for (int i = 0; i < _shop.Goods.Count; ++i)
             {
-                ItemSlot slot = new ItemSlot(_shop.Goods[i]);
-                slot.index = i;
-                slots.Add(slot);
-            }         
+                ItemSlot slot = new ItemSlot();
+                slot.SetItem(i, _shop.Goods[i]);
+                _ShopItems.AddItem(slot);
+            }
         }
 
         void SetOption()
@@ -455,27 +441,21 @@ namespace TextRPG
         {
             base.DrawScene();
             Screen.DrawTopScreen(Display);
-            int xOffset = 2;
-            int yOffset = 1;
-
-            for(int i = 0; i < slots.Count; ++i)
-            {
-                slots[i].Draw(xOffset, yOffset);
-                yOffset += slots[i].Height;
-            }
-
+            _ShopItems.Draw();
             ShowGold();
         }
     }
     
     class SellScene : Scene
     {
-        List<ItemSlot> slots = new List<ItemSlot>();
+        GridBox _playerInventory;
+
         public SellScene(Scene parent)
         {
             _name = "판매";
             _comment = "아이템을 판매합니다.";
             _prev = parent;
+            _playerInventory = new GridBox();
         }
 
         public override void HandleInput(GameManager game, ConsoleKey key)
@@ -491,15 +471,21 @@ namespace TextRPG
 
                 default:
                     string ItemName = game.Player.Inventory[(int)key - 49].Name;
-                    if(game.Player.Sell((int)key - 49))
+                    try
                     {
-                        ThrowMessage($"{ItemName} 을 판매했습니다.");
+                        game.Player.Sell((int)key - 49);
                     }
-                    else
+                    catch (IndexOutOfRangeException e)
+                    {
+                        return;
+                    }
+                    catch(EquippedItemException e)
                     {
                         ThrowMessage("장비를 해제 후 판매해주세요.");
+                        return;
                     }
-                    
+                    ThrowMessage($"{ItemName} 을 판매했습니다.");
+
                     break;
             }
         }
@@ -515,13 +501,12 @@ namespace TextRPG
 
         void SetDisplay(Player player)
         {
-            slots.Clear();
-
-            for(int i = 0; i <player.Inventory.Count; ++i)
+            _playerInventory.Clear();
+            for (int i = 0; i < player.Inventory.Count; ++i)
             {
-                ItemSlot slot = new ItemSlot(player.Inventory[i]);
-                slot.index = i;
-                slots.Add(slot);
+                ItemSlot slot = new ItemSlot();
+                slot.SetItem(i, player.Inventory[i]);
+                _playerInventory.AddItem(slot);
             }
         }
 
@@ -540,16 +525,7 @@ namespace TextRPG
         {
             base.DrawScene();
             Screen.DrawTopScreen(Display);
-
-            int xOffset = 2;
-            int yOffset = 1;
-
-            for (int i = 0; i < slots.Count; ++i)
-            {
-                slots[i].Draw(xOffset, yOffset);
-                yOffset += slots[i].Height;
-            }
-
+            _playerInventory.Draw();
             ShowGold();
         }
     }
@@ -603,32 +579,35 @@ namespace TextRPG
     class DungunEntranceScene : Scene
     {
         string[] _recommendDef;
-        List<Widget> _widgets;
+        
+        GridBox _panel;
         public DungunEntranceScene(Scene parent)
         {
             _name = "던전 입구";
             _comment = "입장할 던전을 선택합니다.";
             _prev = parent;
-
+            _panel = new GridBox();
+            _panel.SetColomn(1);
+            _panel.SetMargine(1, 1);
             _choices = new string[] { "쉬운 던전", "일반 던전", "어려운 던전" };
             _recommendDef = new string[] { "1 ~ 3", "5 ~ 10", "10 ~ 20" };
 
-            _widgets = new List<Widget>();
-
+            
             for (int i = 0; i < 3; ++i)
             {
-                TextBlock textBlock = new TextBlock(50, 3);
+                TextBlock textBlock = new TextBlock(2 + 50 * i, 1 + 3 * i, 50, 3);
                 string dungeon = Utility.MatchCharacterLength(_choices[i], 20);
-                textBlock.text = new string[] { $"{i + 1}. {dungeon} | 권장 방어력 {_recommendDef[i]}" };
-                _widgets.Add(textBlock);
+                textBlock.SetText($"{i + 1}. {dungeon} | 권장 방어력 {_recommendDef[i]}");
+                _panel.AddItem(textBlock);
             }
         }
 
         public override void HandleInput(GameManager game, ConsoleKey key)
         {
             base.HandleInput(game, key);
-            if(game.Player.Hp <= 0)
+            if(game.Player.Hp <= 0 && key != ConsoleKey.D0)
             {
+                ThrowMessage("체력이 0 입니다.");
                 return;
             }
 
@@ -639,15 +618,15 @@ namespace TextRPG
                     break;
 
                 case ConsoleKey.D1:
-                    game.ChangeScene(new EasyDungunScene(this));
+                    game.ChangeScene(new EasyDungeonScene(this));
                     break;
 
                 case ConsoleKey.D2:
-                    game.ChangeScene(new NormalDungunScene(this));
+                    game.ChangeScene(new NormalDungeonScene(this));
                     break;
 
                 case ConsoleKey.D3:
-                    game.ChangeScene(new HardDungunScene(this));
+                    game.ChangeScene(new HardDungeonScene(this));
                     break;
             }
         }
@@ -656,34 +635,30 @@ namespace TextRPG
         {
             base.DrawScene();
             Screen.DrawTopScreen(Display);
-
-            int xOffset = 2;
-            int yOffset = 1;
-
-            for(int i = 0; i < _widgets.Count; ++i)
-            {
-                _widgets[i].Draw(xOffset, yOffset);
-                yOffset += _widgets[i].Height;
-            }
+            _panel.Draw();
         }
     }
 
-    class BaseDungunScene : Scene
+    class BaseDungeonScene : Scene
     {
-        protected Dungun _dungeon;
+        protected Dungeon _dungeon;
         
-        int _yLine = 4;
+        int _yLine = 2;
                 
         string[] msg;
-
-        public BaseDungunScene()
+        TextBlock _textBlock;
+        ResultWidget _resultWidget;
+        public BaseDungeonScene()
         {
-            msg = new string[] { "공략 중 . . .", "공략 성공!!", "공략 실패 ㅠㅁㅠ" };
+            msg = new string[] { "공략 중 . . .", "공략 성공!! ㄴㅇㄱ", "공략 실패 ㅠㅁㅠ" };
+            _textBlock = new TextBlock();
+            _textBlock.SetSize(70, 3);
+            _resultWidget = new ResultWidget(3, 1, 39, 20);
         }
 
         public override void HandleInput(GameManager game, ConsoleKey key)
         {
-            if (_dungeon.state == Dungun.EDungunState.Continue) return;
+            if (_dungeon.state == Dungeon.EDungunState.Continue) return;
             
             switch(key)
             {
@@ -708,43 +683,48 @@ namespace TextRPG
             do
             {
                 int result = (int)_dungeon.Progress();
-                Screen.PrintLine(5, _yLine, msg[result]);
-                _yLine += 2;
+                _textBlock.SetText(msg[result]);
+                
+                _textBlock.SetPosition(2, _yLine);
+                _textBlock.Draw();
+                _yLine += _textBlock.Height;
                 Thread.Sleep(1000);
 
-            } while (_dungeon.state == Dungun.EDungunState.Continue);
+            } while (_dungeon.state == Dungeon.EDungunState.Continue);
 
-            Screen.DrawTopScreen(_dungeon.SettleUp(), 3, true);
+            Screen.DrawTopScreen(Display);
+            _resultWidget.SetResult(_dungeon.beforeRecord, _dungeon.afterRecord);
+            _resultWidget.Draw();
 
             Screen.DrawBotScreen(Option);
         }
     }
 
-    class EasyDungunScene : BaseDungunScene
+    class EasyDungeonScene : BaseDungeonScene
     {
-        public EasyDungunScene(Scene parent)
+        public EasyDungeonScene(Scene parent)
         {
-            _dungeon = new Dungun("마을 근처", 0, 2, 2);
+            _dungeon = new Dungeon("마을 근처", 0, 2, 2);
             _name = _dungeon.Name;  
             _prev = parent;
         }
     }
 
-    class NormalDungunScene : BaseDungunScene
+    class NormalDungeonScene : BaseDungeonScene
     {
-        public NormalDungunScene(Scene parent)
+        public NormalDungeonScene(Scene parent)
         {
-            _dungeon = new Dungun("성벽 외곽", 1, 7, 7);
+            _dungeon = new Dungeon("성벽 외곽", 1, 7, 7);
             _name = _dungeon.Name;
             _prev = parent;
         }
     }
 
-    class HardDungunScene : BaseDungunScene
+    class HardDungeonScene : BaseDungeonScene
     {
-        public HardDungunScene(Scene parent)
+        public HardDungeonScene(Scene parent)
         {
-            _dungeon = new Dungun("지하 미궁", 2, 20, 14);
+            _dungeon = new Dungeon("지하 미궁", 2, 20, 14);
             _name = _dungeon.Name;
             _prev = parent;
         }

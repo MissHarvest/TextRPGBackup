@@ -61,44 +61,5 @@ namespace TextRPG
             _currentScene.Update(this);
             _currentScene.DrawScene();
         }
-
-        Player LoadPlayerData()
-        {
-            string[] lines = File.ReadAllLines(@"..\..\..\PlayerData.txt");
-            foreach(string line in lines)
-            {
-                string[] data = line.Split(',');
-                if(data.Length != 8)
-                {
-                    Console.WriteLine("옳바르지 않은 데이터 형식");
-                    Environment.Exit(0);
-                }
-                
-                int level = int.Parse(data[0]);
-                string job = data[1];
-                int atk = int.Parse(data[2]);
-                int def = int.Parse(data[3]);
-                int maxHp = int.Parse(data[4]);
-                int exp = int.Parse(data[5]);
-                int maxExp = int.Parse(data[6]);
-                int gold = int.Parse(data[7]);
-
-                return new Player(level, job, atk, def, maxHp, exp, maxExp, gold);
-            }
-            return new Player();
-        }
-
-        void SavePlayerData()
-        {
-            using(StreamWriter outputFile = new StreamWriter(@"..\..\..\PlayerData.txt"))
-            {
-                outputFile.Write($"{_player.GetData()}");
-            }
-
-            using (StreamWriter outputFile = new StreamWriter(@"..\..\..\InventoryData.txt"))
-            {
-                outputFile.Write($"{_player.GetData()}");
-            }
-        }
     }
 }

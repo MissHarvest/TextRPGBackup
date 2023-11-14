@@ -19,8 +19,14 @@ namespace TextRPG
         // _equips[(int)Item.EType]
         public EquipManager()
         {
-            JObject save = Loader.LoadEquipment();
-            _equips = save["Equip"].ToObject<Item[]>();
+            //JObject save = Loader.LoadEquipment();
+            //_equips = save["Equip"].ToObject<Item[]>();
+            _equips = new Item[2];
+
+            for(int i = 0; i < _equips.Length; ++i)
+            {
+                _equips[i] = Item.NULL;
+            }
         }
 
         public void Wear(Item item)
@@ -131,14 +137,15 @@ namespace TextRPG
             Exp = (int)save["Exp"];            
             _gold = (int)save["Gold"];
 
-            //_inventory.Add(new Item("목검", "1:3", "나무로 만들어진 검이다.", Item.EType.Weapon,10));
-            //_inventory.Add(new Item("나무 투구", "2:1", "나무로 만들어진 투구이다.", Item.EType.Armor, 5));
-            //_inventory.Add(new Item("검", "1:5", "흔한 검이다.", Item.EType.Weapon, 3));
-
             _inventory = save["Inventory"].ToObject<List<Item>>();
 
             _equipManager = new EquipManager();
-            //Loader.Save(this);
+
+            foreach(var item in _inventory)
+            {
+                if (item.bEquip)
+                    _equipManager.Wear(item);
+            }
         }
 
         public Player(int lv, string job, int atk, int def, int maxHp, int exp, int maxExp, int gold)
@@ -153,8 +160,7 @@ namespace TextRPG
             hp = maxHp;
 
             _maxExp = maxExp;
-            Exp = exp;
-            
+            Exp = exp;            
              
             _gold = gold;            
         }
@@ -195,28 +201,33 @@ namespace TextRPG
             });
         }
 
-        public bool Buy(Item item)
+        public void Buy(Item item)
         {
-            if (_gold < item.Price) return false;
-
-            _inventory.Add(item);
-            _gold -= item.Price;
-            return true;
+            if (_gold < item.Price)
+            {
+                throw new GoldShortageException();
+            }
+            else if (_inventory.Count == 5)// _inventory.Max)
+            {
+                throw new IndexOutOfRangeException();
+            }
+            else
+            {
+                _inventory.Add(item);
+            }
         }
 
-        public bool Sell(int index)
+        public void Sell(int index)
         {
-            try
+            if (_inventory[index].bEquip)
             {
-                if (_inventory[index].bEquip) return false;
+                throw new EquippedItemException();
+            }
+            else
+            {
                 _gold += _inventory[index].Price;
-                _inventory.RemoveAt(index);                
+                _inventory.RemoveAt(index);
             }
-            catch(Exception e) // 배열 범위 초과
-            {
-
-            }
-            return true;
         }
 
         public void Damaged(int dmg)

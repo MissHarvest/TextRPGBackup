@@ -6,50 +6,29 @@ using System.Threading.Tasks;
 
 namespace TextRPG
 {
-    class DungeonResult
+    class Record
     {
-        int _beforeGold;
-        int _beforeHp;
-        int _afterGold;
-        int _afterHp;
-        int _beforeExp;
-        int _afterExp;
-        int _beforeLv;
-        int _afterLv;
+        public int gold = 0;
+        public int hp = 0;
+        public int exp = 0;
+        public int maxExp = 0;
+        public int lv = 0;
 
-        public void RecordBefore(Player player)
+        public void Save(Player player)
         {
-            _beforeGold = player.Gold;
-            _beforeExp = player.Exp;
-            _beforeLv = player.Lv;
-            _beforeHp = player.Hp;
-        }
-
-        public void RecordAfter(Player player)
-        {
-            _afterGold = player.Gold;
-            _afterExp = player.Exp;
-            _afterLv = player.Lv;
-            _afterHp = player.Hp;
-        }
-
-        public string[] GetRecord()
-        {
-            string[] msg = new string[]
-            {
-                "[탐험 결과]",
-                $"체력 : {_beforeHp} -> {_afterHp}",
-                $"Gold : {_beforeGold} -> {_afterGold}",
-                $"Lv : {_beforeLv} ({_beforeExp}) -> {_afterLv} ({_afterExp})"
-            };
-            return msg;
+            gold = player.Gold;
+            maxExp = player.MaxExp;
+            exp = player.Exp;
+            hp = player.Hp;
+            lv = player.Lv;
         }
     }
 
-    internal class Dungun
+    internal class Dungeon
     {
         static Random Random;
-        DungeonResult result;
+        public Record beforeRecord;
+        public Record afterRecord;
 
         public enum EDungunState { Continue, Clear, Fail };
         public EDungunState state;
@@ -72,10 +51,12 @@ namespace TextRPG
         float _clearPercent = 0;
         int _exp;
 
-        public Dungun(string name, int difficulty, int def, int exp)
+        public Dungeon(string name, int difficulty, int def, int exp)
         {
             Random = new Random();
-            result = new DungeonResult();
+            beforeRecord = new Record();
+            afterRecord = new Record();
+
             state = EDungunState.Continue;
             _name = name;
 
@@ -91,7 +72,7 @@ namespace TextRPG
             _player = player;
             _diffDef = _recommendedDef - player.Def;
             _clearPercent = (float)player.Def / (_recommendedDef + player.Def);
-            result.RecordBefore(_player);
+            beforeRecord.Save(_player);
         }
 
         public EDungunState Progress()
@@ -100,16 +81,18 @@ namespace TextRPG
             if(_tryCount > _maxTryCount) 
             {
                 state = EDungunState.Fail;
+                SettleUp();
             }
             else if(Random.NextDouble() < _clearPercent)
             {
                 state = EDungunState.Clear;
+                SettleUp();
             }
 
             return state;
         }
 
-        public string[] SettleUp()
+        public void SettleUp()
         {
             if(state == EDungunState.Clear)
             {
@@ -118,10 +101,9 @@ namespace TextRPG
                 _player.Exp += _exp;
             }
 
-            // 체력 감소            
+            // 체력 감소
             _player.Damaged(Random.Next(20 * ((int)_difficulty+1) + _diffDef, 25 * ((int)_difficulty + 1) + _diffDef));
-            result.RecordAfter(_player);
-            return result.GetRecord();
+            afterRecord.Save(_player);
         }
     }
 }

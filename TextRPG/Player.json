@@ -1,11 +1,39 @@
 {
-  "Lv": 2,
+  "Lv": 4,
   "Class": "전사",
-  "Atk": 12,
-  "Def": 2,
+  "Atk": 16,
+  "Def": 4,
   "MaxHP": 100,
-  "Exp": 8,
-  "MaxExp": 20,
-  "Gold": 321,
-  "Inventory": []
+  "Exp": 18,
+  "MaxExp": 40,
+  "Gold": 1676,
+  "Inventory": [
+    {
+      "bEquip": true,
+      "_status": 1,
+      "type": 0,
+      "Name": "목검",
+      "Value": 3,
+      "Description": "나무로 만들어진 검이다.",
+      "Price": 10
+    },
+    {
+      "bEquip": false,
+      "_status": 1,
+      "type": 0,
+      "Name": "검",
+      "Value": 5,
+      "Description": "흔한 검이다.",
+      "Price": 3
+    },
+    {
+      "bEquip": true,
+      "_status": 2,
+      "type": 1,
+      "Name": "나무 투구",
+      "Value": 1,
+      "Description": "나무로 만들어진 투구이다.",
+      "Price": 5
+    }
+  ]
 }
